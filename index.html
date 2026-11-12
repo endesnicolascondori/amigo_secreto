@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Amigo Secreto 3D | Edición Pink Glow</title>
+    <title>Amigo Secreto 3D | Edición Pink Glow + Audio</title>
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     <link rel="stylesheet" href="styles.css">
     <!-- Tipografía moderna y expresiva -->
@@ -12,19 +12,34 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
     <!-- Confeti festivo -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js" defer></script>
-    <!-- SDK de EmailJS -->
+    <!-- SDK de EmailJS v4 -->
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
 </head>
 <body>
-    <!-- Lienzo 3D de Three.js -->
-    <canvas id="bg-canvas"></canvas>
+    <!-- Botón de control de sonido flotante -->
+    <button id="sound-toggle" class="sound-btn" aria-label="Activar o desactivar sonido" title="Sonido FX">
+        🔊 Sonido ON
+    </button>
 
     <main class="app-container">
         <header class="app-header">
-            <div class="badge-glow">✨ Experiencia 3D Interactiva</div>
+            <div class="badge-glow">✨ Experiencia 3D + Audio FX</div>
             <h1>Amigo Secreto</h1>
             <p>Organiza tu intercambio con estilo, cero contraseñas y magia en 3D.</p>
         </header>
+
+        <!-- ESCENARIO 3D DEDICADO Y VISIBLE (Nunca queda cubierto por formularios) -->
+        <section class="stage-wrapper" aria-label="Escenario 3D Interactivo">
+            <div class="stage-header">
+                <span class="stage-live-dot"></span>
+                <span id="stage-status">Cápsula 3D Activa — Agrega participantes para crear esferas</span>
+            </div>
+            <div id="three-stage" class="three-stage">
+                <canvas id="bg-canvas"></canvas>
+            </div>
+            <!-- Leyenda de esferas en vivo -->
+            <div id="orb-legend" class="orb-legend"></div>
+        </section>
 
         <!-- Vista de Revelación (Enlace mágico de WhatsApp) -->
         <section id="reveal-view" class="glass-card reveal-card" hidden>
@@ -65,7 +80,7 @@
             <section class="glass-card">
                 <div class="card-title">
                     <span class="step-icon">🌸</span>
-                    <h2>Detalles del Intercambio</h2>
+                    <h2>1. Detalles del Intercambio</h2>
                 </div>
                 <div class="input-group">
                     <label for="event-name">Nombre del grupo o celebración</label>
@@ -88,11 +103,11 @@
                 <div class="section-header">
                     <div class="card-title" style="margin-bottom:0;">
                         <span class="step-icon">🎀</span>
-                        <h2>Participantes</h2>
+                        <h2>2. Participantes</h2>
                     </div>
                     <span id="participant-count" class="counter-badge">0 / 3 mín.</span>
                 </div>
-                <p class="helper-text">Cada participante que agregues creará una esfera mágica flotante en el escenario 3D.</p>
+                <p class="helper-text">Mira arriba el escenario 3D: cada persona añadida aparecerá con su propia esfera e iniciales.</p>
 
                 <form id="participant-form" class="add-participant-box" novalidate>
                     <div class="row">
@@ -103,11 +118,11 @@
                             <input type="email" id="p-email" placeholder="correo@ejemplo.com" required>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-secondary">+ Añadir al Escenario 3D</button>
+                    <button type="submit" class="btn btn-secondary">+ Añadir Esfera al Escenario 3D</button>
                 </form>
                 <p id="form-error" class="error-msg" hidden></p>
 
-                <!-- Chips interactivos de participantes -->
+                <!-- Lista interactiva de participantes -->
                 <ul id="participant-list" class="participant-list"></ul>
             </section>
 
@@ -124,7 +139,7 @@
             <div class="glass-modal">
                 <div class="floating-icon">💖</div>
                 <h3>¡Sorteo 3D Completado!</h3>
-                <p>Las esferas se han emparejado sin bucles repetidos. Comparte su tarjeta secreta con cada participante:</p>
+                <p id="email-status-msg">Las esferas se han emparejado. Comparte su tarjeta secreta con cada participante:</p>
                 <ul id="share-links-list" class="share-list"></ul>
                 <button id="reset-btn" class="btn btn-secondary">Crear un nuevo sorteo</button>
             </div>

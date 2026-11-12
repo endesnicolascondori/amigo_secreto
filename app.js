@@ -1,14 +1,146 @@
 const participants = [];
 
-// Configuración opcional de EmailJS
+/* =========================================================================
+   1. CONFIGURACIÓN DE EMAILJS (SOLUCIÓN DEFINITIVA AL ERROR 422)
+   =========================================================================
+   ¿Por qué ocurre el error 422 (Unprocessable Content) en EmailJS?
+   Causas principales:
+   A) En tu plantilla dentro de https://dashboard.emailjs.com/admin/templates,
+      el campo "To Email" (Destinatario) está vacío o tiene otro nombre de variable.
+      -> SOLUCIÓN: Enviamos todas las variantes comunes (to_email, email, user_email, recipient)
+         y además debes poner {{to_email}} en el campo "To Email" de tu plantilla en EmailJS.
+   B) No se inicializó emailjs.init({ publicKey }) para la versión 4 del SDK.
+   ========================================================================= */
 const EMAILJS_CONFIG = {
-    enabled: true, // Cambia a true cuando pongas tus claves de EmailJS
+    enabled: true, // Déjalo en true y coloca tus 3 credenciales reales abajo:
     serviceId: "service_7ky7vbo",
     templateId: "template_61vzke4",
     publicKey: "oHQKLmafkyrjLrZNe"
 };
 
+/* =========================================================================
+   2. SINTETIZADOR DE SONIDO WEB AUDIO API (CERO ARCHIVOS EXTERNOS)
+   ========================================================================= */
+let soundEnabled = true;
+let audioCtx = null;
+
+function getAudioContext() {
+    if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) audioCtx = new AudioContextClass();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    return audioCtx;
+}
+
+// Sonido mágico cristalino al agregar una esfera
+function playPopSound(pitchIndex = 0) {
+    if (!soundEnabled) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    // Escala pentatónica alegre según cuántos participantes hay
+    const baseFreqs = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5];
+    const freq = baseFreqs[pitchIndex % baseFreqs.length];
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.4, now + 0.18);
+
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.23);
+}
+
+// Sonido suave descendente al eliminar una esfera
+function playRemoveSound() {
+    if (!soundEnabled) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(420, now);
+    osc.frequency.exponentialRampToValueAtTime(180, now + 0.16);
+
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.18);
+}
+
+// Redoble espacial mientras gira la cápsula 3D
+function playSpinSound(durationMs = 1500) {
+    if (!soundEnabled) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const steps = 14;
+    const interval = durationMs / steps;
+    for (let i = 0; i < steps; i++) {
+        setTimeout(() => {
+            if (!soundEnabled) return;
+            const now = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(300 + i * 45, now);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.09);
+        }, i * interval);
+    }
+}
+
+// Acorde triunfal al completar el sorteo
+function playSuccessFanfare() {
+    if (!soundEnabled) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
+    const notes = [523.25, 659.25, 783.99, 1046.5]; // Do Mayor brillante
+    notes.forEach((freq, idx) => {
+        const now = ctx.currentTime + idx * 0.09;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.65);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.68);
+    });
+}
+
 // Elementos del DOM
+const soundToggleBtn = document.getElementById('sound-toggle');
+const stageContainer = document.getElementById('three-stage');
+const stageStatus = document.getElementById('stage-status');
+const orbLegend = document.getElementById('orb-legend');
 const form = document.getElementById('participant-form');
 const nameInput = document.getElementById('p-name');
 const emailInput = document.getElementById('p-email');
@@ -17,149 +149,214 @@ const listEl = document.getElementById('participant-list');
 const countBadge = document.getElementById('participant-count');
 const drawBtn = document.getElementById('draw-btn');
 const modal = document.getElementById('success-modal');
+const emailStatusMsg = document.getElementById('email-status-msg');
 const shareLinksList = document.getElementById('share-links-list');
 const resetBtn = document.getElementById('reset-btn');
 
-// Indicadores de pasos
 const step2Ind = document.getElementById('step-2-indicator');
 const step3Ind = document.getElementById('step-3-indicator');
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ORB_PALETTE = ['#EC4899', '#F43F5E', '#A855F7', '#FB7185', '#F59E0B', '#38BDF8', '#34D399'];
 
-/* ==========================================
-   MOTOR 3D CON THREE.JS (ESCENA ROSA INTERACTIVA)
-   ========================================== */
+soundToggleBtn.addEventListener('click', () => {
+    soundEnabled = !soundEnabled;
+    soundToggleBtn.textContent = soundEnabled ? '🔊 Sonido ON' : '🔇 Silencio';
+    if (soundEnabled) playPopSound(2);
+});
+
+/* =========================================================================
+   3. ESCENARIO 3D DEDICADO CON THREE.JS (ESFERAS CON ETIQUETAS CLARAS)
+   ========================================================================= */
 let scene, camera, renderer, giftGroup, participantOrbs = [];
 let isSpinningFast = false;
 let mouseX = 0, mouseY = 0;
 
+// Crea una textura 2D con las iniciales del participante para envolver la esfera 3D
+function createInitialsTexture(initials, bgHex) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+
+    // Fondo degradado de la esfera
+    const grad = ctx.createRadialGradient(90, 90, 20, 128, 128, 140);
+    grad.addColorStop(0, '#FFFFFF');
+    grad.addColorStop(0.25, bgHex);
+    grad.addColorStop(1, '#831843');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 256, 256);
+
+    // Texto de iniciales nítido en el frente
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 88px Outfit, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(initials, 128, 132);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    return texture;
+}
+
 function initThreeJS() {
     const canvas = document.getElementById('bg-canvas');
-    if (!window.THREE || !canvas) return;
+    if (!window.THREE || !canvas || !stageContainer) return;
+
+    const width = stageContainer.clientWidth;
+    const height = stageContainer.clientHeight;
 
     scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.z = 11;
+    camera = new THREE.PerspectiveCamera(48, width / height, 0.1, 1000);
+    camera.position.set(0, 0.6, 9.2);
+    camera.lookAt(0, 0, 0);
 
     renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-    // Iluminación cálida rosada y dorada
-    const ambientLight = new THREE.AmbientLight(0xffe4e6, 0.85);
+    // Iluminación de estudio para resaltar las esferas
+    const ambientLight = new THREE.AmbientLight(0xffe4e6, 1.1);
     scene.add(ambientLight);
 
-    const pointLight1 = new THREE.PointLight(0xec4899, 1.4, 30);
-    pointLight1.position.set(6, 6, 6);
-    scene.add(pointLight1);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.3);
+    dirLight.position.set(5, 8, 7);
+    scene.add(dirLight);
 
-    const pointLight2 = new THREE.PointLight(0xf43f5e, 1.1, 30);
-    pointLight2.position.set(-6, -5, 4);
-    scene.add(pointLight2);
+    const pinkLight = new THREE.PointLight(0xec4899, 1.6, 25);
+    pinkLight.position.set(-5, -4, 5);
+    scene.add(pinkLight);
 
-    // Grupo central: Regalo 3D / Núcleo mágico
+    // Grupo central: Núcleo de Sorteo 3D
     giftGroup = new THREE.Group();
     scene.add(giftGroup);
 
-    // Caja de regalo estilizada (TorusKnot central brillante + Halo)
-    const coreGeo = new THREE.TorusKnotGeometry(1.15, 0.34, 100, 16);
+    const coreGeo = new THREE.OctahedronGeometry(0.95, 2);
     const coreMat = new THREE.MeshPhysicalMaterial({
         color: 0xec4899,
-        emissive: 0x831843,
-        emissiveIntensity: 0.25,
-        roughness: 0.2,
-        metalness: 0.3,
-        clearcoat: 1.0
+        emissive: 0x9d174d,
+        emissiveIntensity: 0.35,
+        roughness: 0.15,
+        metalness: 0.25,
+        clearcoat: 1.0,
+        wireframe: false
     });
     const coreMesh = new THREE.Mesh(coreGeo, coreMat);
     giftGroup.add(coreMesh);
 
-    // Anillo orbital dorado rosa
-    const ringGeo = new THREE.TorusGeometry(2.2, 0.05, 16, 100);
-    const ringMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.3, metalness: 0.8 });
+    // Anillo ecuatorial brillante
+    const ringGeo = new THREE.TorusGeometry(1.5, 0.045, 16, 100);
+    const ringMat = new THREE.MeshStandardMaterial({
+        color: 0xfbcfe8,
+        emissive: 0xf43f5e,
+        emissiveIntensity: 0.4,
+        roughness: 0.2,
+        metalness: 0.8
+    });
     const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-    ringMesh.rotation.x = Math.PI / 3;
+    ringMesh.rotation.x = Math.PI / 2.3;
     giftGroup.add(ringMesh);
 
-    // Posicionar el núcleo ligeramente arriba a la derecha en pantallas grandes
-    giftGroup.position.set(0, 1.8, -2);
-
-    // Interacción con el mouse / toque
-    window.addEventListener('mousemove', (e) => {
-        mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
-        mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+    // Interacción táctil y con mouse sobre el escenario 3D
+    stageContainer.addEventListener('mousemove', (e) => {
+        const rect = stageContainer.getBoundingClientRect();
+        mouseX = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+        mouseY = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
     });
 
     window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
+        if (!stageContainer) return;
+        const w = stageContainer.clientWidth;
+        const h = stageContainer.clientHeight;
+        camera.aspect = w / h;
         camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setSize(w, h);
     });
 
     animateThreeJS();
 }
 
-// Añade una esfera 3D brillante cada vez que se agrega un participante
-function addParticipantOrb3D() {
-    if (!scene) return;
-    const colors = [0xec4899, 0xf43f5e, 0xdb2777, 0xf472b6, 0xfb7185];
-    const color = colors[participantOrbs.length % colors.length];
+// Reorganiza los ángulos de todas las esferas para que orbiten en un anillo limpio y 100% visible
+function redistributeOrbs() {
+    const total = participantOrbs.length;
+    participantOrbs.forEach((orb, idx) => {
+        orb.userData.baseAngle = (idx / Math.max(total, 1)) * Math.PI * 2;
+        orb.userData.radius = total > 6 ? 3.35 : 2.95;
+    });
+}
 
-    const geo = new THREE.SphereGeometry(0.38, 32, 32);
+function addParticipantOrb3D(name, colorHex) {
+    if (!scene) return;
+    const initials = getInitials(name);
+    const texture = createInitialsTexture(initials, colorHex);
+
+    const geo = new THREE.SphereGeometry(0.48, 32, 32);
     const mat = new THREE.MeshPhysicalMaterial({
-        color,
-        roughness: 0.15,
-        metalness: 0.2,
-        clearcoat: 1
+        map: texture,
+        roughness: 0.18,
+        metalness: 0.1,
+        clearcoat: 0.9
     });
     const orb = new THREE.Mesh(geo, mat);
-
-    const angle = participantOrbs.length * 1.2;
-    const radius = 3.6 + (participantOrbs.length % 3) * 0.7;
-    orb.userData = { angle, radius, speed: 0.01 + Math.random() * 0.01, yOffset: (Math.random() - 0.5) * 3 };
+    orb.userData = {
+        baseAngle: 0,
+        radius: 2.95,
+        bobOffset: Math.random() * Math.PI * 2
+    };
 
     scene.add(orb);
     participantOrbs.push(orb);
+    redistributeOrbs();
 }
 
-function removeParticipantOrb3D() {
-    if (!scene || participantOrbs.length === 0) return;
-    const orb = participantOrbs.pop();
-    scene.remove(orb);
+function rebuildAllOrbs3D() {
+    if (!scene) return;
+    participantOrbs.forEach(o => scene.remove(o));
+    participantOrbs = [];
+    participants.forEach((p) => {
+        addParticipantOrb3D(p.name, p.color);
+    });
 }
 
-function clearParticipantOrbs3D() {
-    while (participantOrbs.length > 0) {
-        removeParticipantOrb3D();
-    }
-}
+let globalOrbitAngle = 0;
 
 function animateThreeJS() {
     requestAnimationFrame(animateThreeJS);
 
-    const spinSpeed = isSpinningFast ? 0.18 : 0.008;
+    const spinSpeed = isSpinningFast ? 0.16 : 0.012;
+    globalOrbitAngle += isSpinningFast ? 0.12 : 0.014;
+
     if (giftGroup) {
         giftGroup.rotation.y += spinSpeed;
-        giftGroup.rotation.x += spinSpeed * 0.6;
-        giftGroup.position.x += (mouseX * 1.2 - giftGroup.position.x) * 0.05;
-        giftGroup.position.y += (-mouseY * 0.8 + 1.2 - giftGroup.position.y) * 0.05;
+        giftGroup.rotation.x += spinSpeed * 0.5;
+        giftGroup.position.x += (mouseX * 0.55 - giftGroup.position.x) * 0.08;
+        giftGroup.position.y += (-mouseY * 0.35 - giftGroup.position.y) * 0.08;
     }
 
     participantOrbs.forEach((orb, idx) => {
-        orb.userData.angle += isSpinningFast ? 0.14 : orb.userData.speed;
-        orb.position.x = Math.cos(orb.userData.angle) * orb.userData.radius;
-        orb.position.z = Math.sin(orb.userData.angle) * orb.userData.radius - 2;
-        orb.position.y = orb.userData.yOffset + Math.sin(orb.userData.angle * 2 + idx) * 0.6;
+        const currentAngle = orb.userData.baseAngle + globalOrbitAngle;
+        const r = orb.userData.radius;
+        orb.position.x = Math.cos(currentAngle) * r;
+        orb.position.z = Math.sin(currentAngle) * (r * 0.65);
+        orb.position.y = Math.sin(globalOrbitAngle * 2 + orb.userData.bobOffset) * 0.42;
+
+        // Mantener las iniciales mirando hacia la cámara
+        orb.rotation.y = -currentAngle + Math.PI / 2;
     });
 
     renderer.render(scene, camera);
 }
 
-/* ==========================================
-   LÓGICA DE NEGOCIO Y FLUJO UX
-   ========================================== */
+/* =========================================================================
+   4. FLUJO UX Y ENVÍO DE CORREOS VALIDADO
+   ========================================================================= */
 window.addEventListener('DOMContentLoaded', () => {
     initThreeJS();
+
+    // Inicializar EmailJS v4 si el usuario ya puso su publicKey real
+    if (window.emailjs && EMAILJS_CONFIG.publicKey && EMAILJS_CONFIG.publicKey !== "TU_PUBLIC_KEY") {
+        emailjs.init({ publicKey: EMAILJS_CONFIG.publicKey });
+    }
 
     const params = new URLSearchParams(window.location.search);
     const ticket = params.get('ticket');
@@ -175,8 +372,11 @@ window.addEventListener('DOMContentLoaded', () => {
             document.getElementById('reveal-budget').textContent = data.budget;
             document.getElementById('reveal-date').textContent = data.date;
 
-            // Añadir esferas decorativas para la vista de revelación
-            for (let i = 0; i < 6; i++) addParticipantOrb3D();
+            stageStatus.textContent = `Cápsula de ${data.giver} abierta`;
+            addParticipantOrb3D(data.giver, '#EC4899');
+            addParticipantOrb3D(data.receiver, '#F43F5E');
+
+            setTimeout(() => playSuccessFanfare(), 300);
 
             if (window.confetti) {
                 confetti({
@@ -210,8 +410,11 @@ form.addEventListener('submit', (e) => {
         return;
     }
 
-    participants.push({ id: crypto.randomUUID(), name, email });
-    addParticipantOrb3D();
+    const color = ORB_PALETTE[participants.length % ORB_PALETTE.length];
+    participants.push({ id: crypto.randomUUID(), name, email, color });
+
+    addParticipantOrb3D(name, color);
+    playPopSound(participants.length - 1);
 
     nameInput.value = '';
     emailInput.value = '';
@@ -224,20 +427,33 @@ window.removeParticipant = function(id) {
     const index = participants.findIndex(p => p.id === id);
     if (index !== -1) {
         participants.splice(index, 1);
-        removeParticipantOrb3D();
+        playRemoveSound();
+        rebuildAllOrbs3D();
         updateUI();
     }
 };
 
 function getInitials(name) {
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    return name.split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase();
 }
 
 function updateUI() {
+    // Actualizar leyenda bajo el escenario 3D
+    orbLegend.innerHTML = participants.map(p => `
+        <span class="orb-pill">
+            <span class="orb-dot" style="background:${p.color}"></span>
+            ${escapeHTML(p.name)}
+        </span>
+    `).join('');
+
+    stageStatus.textContent = participants.length === 0
+        ? 'Cápsula 3D Activa — Agrega participantes para crear esferas'
+        : `${participants.length} esfera(s) orbitando en la cápsula 3D`;
+
     listEl.innerHTML = participants.map(p => `
         <li class="participant-item">
             <div class="participant-left">
-                <div class="avatar-circle">${escapeHTML(getInitials(p.name))}</div>
+                <div class="avatar-circle" style="background:${p.color}">${escapeHTML(getInitials(p.name))}</div>
                 <div class="participant-info">
                     <strong>${escapeHTML(p.name)}</strong>
                     <span>${escapeHTML(p.email)}</span>
@@ -314,11 +530,64 @@ function crearEnlaceMagico(payload) {
 
 window.copyMagicLink = function(btn, url) {
     navigator.clipboard.writeText(url).then(() => {
+        playPopSound(4);
         const original = btn.textContent;
         btn.textContent = '¡Copiado!';
         setTimeout(() => btn.textContent = original, 1800);
     });
 };
+
+// Función auxiliar que envía cada correo con todos los alias de destinatario para evitar el Error 422
+async function enviarCorreosEmailJS(pairs, eventName, budget, date) {
+    const hasRealKeys =
+        EMAILJS_CONFIG.enabled &&
+        EMAILJS_CONFIG.serviceId !== "TU_SERVICE_ID" &&
+        EMAILJS_CONFIG.templateId !== "TU_TEMPLATE_ID" &&
+        EMAILJS_CONFIG.publicKey !== "TU_PUBLIC_KEY";
+
+    if (!hasRealKeys || !window.emailjs) {
+        return { sent: false, reason: "Credenciales de prueba (modo enlaces WhatsApp activo)." };
+    }
+
+    // Asegurar inicialización de EmailJS v4
+    emailjs.init({ publicKey: EMAILJS_CONFIG.publicKey });
+
+    for (const par of pairs) {
+        const magicLink = crearEnlaceMagico({
+            event: eventName,
+            giver: par.giver.name,
+            receiver: par.receiver.name,
+            budget,
+            date
+        });
+
+        // Enviamos todos los nombres de variable estándar para que nunca falle por destinatario vacío (422)
+        const templateParams = {
+            to_name: par.giver.name,
+            user_name: par.giver.name,
+            name: par.giver.name,
+            to_email: par.giver.email.trim(),
+            email: par.giver.email.trim(),
+            user_email: par.giver.email.trim(),
+            recipient: par.giver.email.trim(),
+            reply_to: par.giver.email.trim(),
+            secret_friend: par.receiver.name,
+            event_name: eventName,
+            budget: budget,
+            date: date,
+            magic_link: magicLink
+        };
+
+        await emailjs.send(
+            EMAILJS_CONFIG.serviceId.trim(),
+            EMAILJS_CONFIG.templateId.trim(),
+            templateParams,
+            { publicKey: EMAILJS_CONFIG.publicKey.trim() }
+        );
+    }
+
+    return { sent: true };
+}
 
 drawBtn.addEventListener('click', async () => {
     const eventName = document.getElementById('event-name').value.trim() || 'Pink Secret Santa';
@@ -326,29 +595,17 @@ drawBtn.addEventListener('click', async () => {
     const date = document.getElementById('event-date').value || 'Por definir';
 
     drawBtn.disabled = true;
-    drawBtn.textContent = '🌀 Mezclando esferas en 3D...';
+    drawBtn.textContent = '🌀 Girando cápsula 3D...';
     isSpinningFast = true;
+    hideError();
 
-    // Pausa dramática para disfrutar la animación 3D de Three.js
-    await new Promise(r => setTimeout(r, 1400));
+    playSpinSound(1500);
+    await new Promise(r => setTimeout(r, 1500));
 
     try {
         const pairs = generarSorteoCiclico(participants);
 
-        if (EMAILJS_CONFIG.enabled && window.emailjs) {
-            const envios = pairs.map(par => {
-                return emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
-                    to_name: par.giver.name,
-                    to_email: par.giver.email,
-                    secret_friend: par.receiver.name,
-                    event_name: eventName,
-                    budget: budget,
-                    date: date
-                }, EMAILJS_CONFIG.publicKey);
-            });
-            await Promise.all(envios);
-        }
-
+        // Generar siempre las tarjetas privadas de WhatsApp / Link como respaldo inmediato
         shareLinksList.innerHTML = pairs.map(par => {
             const link = crearEnlaceMagico({
                 event: eventName,
@@ -369,10 +626,26 @@ drawBtn.addEventListener('click', async () => {
             `;
         }).join('');
 
+        // Intentar el envío por EmailJS sin bloquear el sorteo si hay un error de configuración en la plantilla
+        try {
+            const mailResult = await enviarCorreosEmailJS(pairs, eventName, budget, date);
+            if (mailResult.sent) {
+                emailStatusMsg.textContent = "✅ ¡Correos enviados con éxito! También puedes compartir los enlaces directos por WhatsApp:";
+            } else {
+                emailStatusMsg.textContent = "Las esferas se han emparejado. Comparte su enlace secreto por WhatsApp con cada participante:";
+            }
+        } catch (mailErr) {
+            console.error("Detalle del error de EmailJS:", mailErr);
+            const errText = mailErr?.text || mailErr?.message || "Error 422";
+            emailStatusMsg.innerHTML = `<span style="color:#E11D48;font-weight:700;">⚠️ Nota de EmailJS (${escapeHTML(errText)}):</span> Revisa que en tu plantilla de EmailJS el campo <b>"To Email"</b> tenga escrito <code>{{to_email}}</code>. Mientras tanto, usa los botones de WhatsApp abajo:`;
+        }
+
+        playSuccessFanfare();
+
         if (window.confetti) {
             confetti({
-                particleCount: 120,
-                spread: 80,
+                particleCount: 130,
+                spread: 85,
                 origin: { y: 0.6 },
                 colors: ['#EC4899', '#F43F5E', '#FBCFE8', '#DB2777']
             });
@@ -389,7 +662,7 @@ drawBtn.addEventListener('click', async () => {
 
 resetBtn.addEventListener('click', () => {
     participants.length = 0;
-    clearParticipantOrbs3D();
+    rebuildAllOrbs3D();
     document.getElementById('event-name').value = '';
     modal.hidden = true;
     updateUI();
