@@ -3,98 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Amigo Secreto | Sorteo sin fricción</title>
+    <title>Amigo Secreto 3D | Edición Pink Glow</title>
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     <link rel="stylesheet" href="styles.css">
-    <!-- Fuente moderna y legible -->
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Librería ligera para animación de confeti -->
+    <!-- Tipografía moderna y expresiva -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Three.js para entorno 3D interactivo -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" defer></script>
+    <!-- Confeti festivo -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js" defer></script>
-    <!-- SDK de EmailJS (Opcional para envíos reales) -->
+    <!-- SDK de EmailJS -->
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" defer></script>
 </head>
 <body>
+    <!-- Lienzo 3D de Three.js -->
+    <canvas id="bg-canvas"></canvas>
+
     <main class="app-container">
         <header class="app-header">
-            <span class="badge">Edición Festiva</span>
+            <div class="badge-glow">✨ Experiencia 3D Interactiva</div>
             <h1>Amigo Secreto</h1>
-            <p>Organiza tu intercambio en segundos, sin registros ni contraseñas.</p>
+            <p>Organiza tu intercambio con estilo, cero contraseñas y magia en 3D.</p>
         </header>
 
-        <!-- Vista de Revelación (cuando un invitado abre su enlace mágico de WhatsApp) -->
-        <section id="reveal-view" class="card reveal-card" hidden>
-            <div class="icon-success">🎄</div>
+        <!-- Vista de Revelación (Enlace mágico de WhatsApp) -->
+        <section id="reveal-view" class="glass-card reveal-card" hidden>
+            <div class="floating-icon">💝</div>
             <h2 id="reveal-event-title">Sorteo de Amigo Secreto</h2>
-            <p class="reveal-subtitle">Hola <strong id="reveal-giver"></strong>, tu Amigo Secreto es:</p>
+            <p class="reveal-subtitle">Hola <strong id="reveal-giver"></strong>, la cápsula 3D eligió a tu Amigo Secreto:</p>
             <div class="secret-box">
                 <span id="reveal-receiver"></span>
             </div>
             <div class="event-meta">
-                <p><strong>Presupuesto:</strong> <span id="reveal-budget"></span></p>
-                <p><strong>Fecha:</strong> <span id="reveal-date"></span></p>
+                <div class="meta-pill"><span>💰 Presupuesto</span><strong id="reveal-budget"></strong></div>
+                <div class="meta-pill"><span>📅 Fecha</span><strong id="reveal-date"></strong></div>
             </div>
-            <a href="./" class="btn btn-secondary" style="display:inline-block; text-decoration:none; margin-top:16px;">Crear mi propio sorteo</a>
+            <a href="./" class="btn btn-secondary" style="display:inline-block; text-decoration:none; margin-top:20px;">Organizar mi propio sorteo</a>
         </section>
 
         <!-- Vista del Organizador -->
         <div id="organizer-view">
+            <!-- Indicador de progreso UX -->
+            <div class="UX-stepper">
+                <div class="step active" id="step-1-indicator">
+                    <span class="step-num">1</span>
+                    <span class="step-label">Evento</span>
+                </div>
+                <div class="step-line"></div>
+                <div class="step" id="step-2-indicator">
+                    <span class="step-num">2</span>
+                    <span class="step-label">Participantes</span>
+                </div>
+                <div class="step-line"></div>
+                <div class="step" id="step-3-indicator">
+                    <span class="step-num">3</span>
+                    <span class="step-label">Sorteo 3D</span>
+                </div>
+            </div>
+
             <!-- Paso 1: Detalles del Evento -->
-            <section class="card">
-                <h2>1. Detalles del Evento</h2>
+            <section class="glass-card">
+                <div class="card-title">
+                    <span class="step-icon">🌸</span>
+                    <h2>Detalles del Intercambio</h2>
+                </div>
                 <div class="input-group">
-                    <label for="event-name">Nombre del grupo o evento</label>
-                    <input type="text" id="event-name" placeholder="Ej. Navidad Familia Pérez" required>
+                    <label for="event-name">Nombre del grupo o celebración</label>
+                    <input type="text" id="event-name" placeholder="Ej. Pink Secret Santa / Amigas 2026" required>
                 </div>
                 <div class="row">
                     <div class="input-group">
                         <label for="event-budget">Presupuesto sugerido</label>
-                        <input type="text" id="event-budget" placeholder="Ej. $20 USD / S/ 50">
+                        <input type="text" id="event-budget" placeholder="Ej. $25 USD / S/ 60">
                     </div>
                     <div class="input-group">
-                        <label for="event-date">Fecha del intercambio</label>
+                        <label for="event-date">Fecha del evento</label>
                         <input type="date" id="event-date">
                     </div>
                 </div>
             </section>
 
             <!-- Paso 2: Participantes -->
-            <section class="card">
+            <section class="glass-card">
                 <div class="section-header">
-                    <h2>2. Participantes</h2>
-                    <span id="participant-count" class="counter-badge">0 agregados (Mín. 3)</span>
+                    <div class="card-title" style="margin-bottom:0;">
+                        <span class="step-icon">🎀</span>
+                        <h2>Participantes</h2>
+                    </div>
+                    <span id="participant-count" class="counter-badge">0 / 3 mín.</span>
                 </div>
+                <p class="helper-text">Cada participante que agregues creará una esfera mágica flotante en el escenario 3D.</p>
 
                 <form id="participant-form" class="add-participant-box" novalidate>
-                    <div class="input-group">
-                        <input type="text" id="p-name" placeholder="Nombre completo" required>
+                    <div class="row">
+                        <div class="input-group">
+                            <input type="text" id="p-name" placeholder="Nombre (Ej. Valeria)" required>
+                        </div>
+                        <div class="input-group">
+                            <input type="email" id="p-email" placeholder="correo@ejemplo.com" required>
+                        </div>
                     </div>
-                    <div class="input-group">
-                        <input type="email" id="p-email" placeholder="Correo electrónico" required>
-                    </div>
-                    <button type="submit" class="btn btn-secondary">+ Agregar Participante</button>
+                    <button type="submit" class="btn btn-secondary">+ Añadir al Escenario 3D</button>
                 </form>
                 <p id="form-error" class="error-msg" hidden></p>
 
-                <!-- Lista dinámica -->
+                <!-- Chips interactivos de participantes -->
                 <ul id="participant-list" class="participant-list"></ul>
             </section>
 
-            <!-- Acción Principal -->
+            <!-- Botón Flotante de Acción Principal -->
             <div class="sticky-footer">
                 <button id="draw-btn" class="btn btn-primary" disabled>
-                    Realizar Sorteo (Faltan 3)
+                    ✨ Agrega 3 personas para activar el Sorteo 3D
                 </button>
             </div>
         </div>
 
         <!-- Modal de Éxito -->
         <div id="success-modal" class="modal-overlay" hidden>
-            <div class="modal-content">
-                <div class="icon-success">🎁</div>
-                <h3>¡Sorteo Realizado con Éxito!</h3>
-                <p>Comparte los enlaces privados por WhatsApp o revisa el envío por correo electrónico:</p>
+            <div class="glass-modal">
+                <div class="floating-icon">💖</div>
+                <h3>¡Sorteo 3D Completado!</h3>
+                <p>Las esferas se han emparejado sin bucles repetidos. Comparte su tarjeta secreta con cada participante:</p>
                 <ul id="share-links-list" class="share-list"></ul>
-                <button id="reset-btn" class="btn btn-secondary">Organizar otro sorteo</button>
+                <button id="reset-btn" class="btn btn-secondary">Crear un nuevo sorteo</button>
             </div>
         </div>
     </main>
