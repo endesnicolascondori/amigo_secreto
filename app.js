@@ -2,10 +2,10 @@ const participants = [];
 
 // Configuración opcional de EmailJS (Reemplaza con tus credenciales si deseas envío directo por email)
 const EMAILJS_CONFIG = {
-    enabled: false, // Cambia a true cuando pongas tus claves de EmailJS
-    serviceId: "TU_SERVICE_ID",
-    templateId: "TU_TEMPLATE_ID",
-    publicKey: "TU_PUBLIC_KEY"
+    enabled: true, // Cambia a true cuando pongas tus claves de EmailJS
+    serviceId: "service_7ky7vbo",
+    templateId: "template_61vzke4",
+    publicKey: "oHQKLmafkyrjLrZNe"
 };
 
 // Elementos del DOM
